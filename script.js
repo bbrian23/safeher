@@ -292,16 +292,23 @@ class SafeSpaceManager {
               url: tab.url
             }).catch(() => {})
             
-            // Retry after a delay
-            setTimeout(async () => {
-              const retryResponse = await chrome.runtime.sendMessage({
-                action: "getPrivacyAnalysis",
-                domain: domain
-              })
-              if (retryResponse && retryResponse.success && retryResponse.analysis) {
-                this.updateWebsiteAnalysis(retryResponse.analysis, domain)
-              }
-            }, 5000)
+            // Retry multiple times with increasing delays
+            const retryDelays = [3000, 5000, 8000, 12000]
+            retryDelays.forEach((delay, index) => {
+              setTimeout(async () => {
+                const retryResponse = await chrome.runtime.sendMessage({
+                  action: "getPrivacyAnalysis",
+                  domain: domain
+                })
+                if (retryResponse && retryResponse.success && retryResponse.analysis) {
+                  console.log(`[SafeSpace] Privacy analysis completed for ${domain}, score: ${retryResponse.analysis.safetyScore}`)
+                  this.updateWebsiteAnalysis(retryResponse.analysis, domain)
+                } else if (index === retryDelays.length - 1) {
+                  // Last retry failed - show error state
+                  this.updateWebsiteAnalysisError(domain)
+                }
+              }, delay)
+            })
           }
         } else {
           // Show default state for chrome:// pages
@@ -474,21 +481,18 @@ class SafeSpaceManager {
     div.dataset.platform = alert.source || "unknown"
 
     const timeAgo = this.formatTimeAgo(alert.timestamp)
-    
-    // Add emoji prefix for high-risk alerts
-    const titlePrefix = severity === 'high' ? '🚨 ' : severity === 'medium' ? '⚠️ ' : ''
 
     div.innerHTML = `
       <div class="alert-indicator ${severity}"></div>
       <div class="alert-content">
-        <div class="alert-title">${titlePrefix}${this.escapeHtml(alert.title)}</div>
+        <div class="alert-title">${this.escapeHtml(alert.title)}</div>
         <p class="alert-description">${this.escapeHtml(alert.description)}</p>
         <div class="alert-meta">${alert.username ? `@${this.escapeHtml(alert.username)} • ` : ""}${timeAgo}</div>
       </div>
       <div class="alert-actions">
-        <button class="action-btn hide-btn" title="Hide">👁️</button>
-        ${alert.username ? `<button class="action-btn block-account-btn" title="Block">🚫</button>` : ""}
-        <button class="action-btn report-btn" title="Report">🚩</button>
+        <button class="action-btn hide-btn" title="Hide">Hide</button>
+        ${alert.username ? `<button class="action-btn block-account-btn" title="Block">Block</button>` : ""}
+        <button class="action-btn report-btn" title="Report">Report</button>
       </div>
     `
 
@@ -508,26 +512,36 @@ class SafeSpaceManager {
       if (scoreFill) {
         scoreFill.style.width = "0%"
         scoreFill.className = "score-fill"
+        scoreFill.style.background = "linear-gradient(90deg, #e5e7eb, #d1d5db)"
       }
       if (scoreDescription) {
         scoreDescription.textContent = domain 
           ? `Analyzing ${domain}...` 
           : "No website selected"
+        scoreDescription.style.color = "#6b7280"
       }
       if (riskList) {
         riskList.innerHTML = `
           <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 12px;">
-            ${domain ? "Analysis in progress..." : "No analysis available"}
+            ${domain ? "Analysis in progress. This may take a few moments..." : "No analysis available"}
           </div>
         `
       }
       return
     }
 
-    const score = analysis.safetyScore || 50
+    const score = Math.round(analysis.safetyScore || 50)
 
     if (scoreNumber) {
       scoreNumber.textContent = score
+      // Update color based on score
+      if (score >= 70) {
+        scoreNumber.style.color = "#22c55e"
+      } else if (score >= 40) {
+        scoreNumber.style.color = "#eab308"
+      } else {
+        scoreNumber.style.color = "#ef4444"
+      }
     }
 
     if (scoreFill) {
@@ -537,10 +551,19 @@ class SafeSpaceManager {
 
     if (scoreDescription) {
       let desc = "Unknown"
-      if (score >= 70) desc = "Good - Minor privacy concerns detected"
-      else if (score >= 40) desc = "Warning - Some privacy concerns detected"
-      else desc = "Poor - Significant privacy risks detected"
+      let color = "#6b7280"
+      if (score >= 70) {
+        desc = "Good - Minor privacy concerns detected"
+        color = "#22c55e"
+      } else if (score >= 40) {
+        desc = "Warning - Some privacy concerns detected"
+        color = "#eab308"
+      } else {
+        desc = "Poor - Significant privacy risks detected"
+        color = "#ef4444"
+      }
       scoreDescription.textContent = desc
+      scoreDescription.style.color = color
     }
 
     if (riskList) {
@@ -647,7 +670,7 @@ class SafeSpaceManager {
         }
         
         summarySection.innerHTML = `
-          <h4 class="subsection-title" style="margin-bottom: 12px;">📄 Privacy Policy Summary</h4>
+          <h4 class="subsection-title" style="margin-bottom: 12px;">Privacy Policy Summary</h4>
           <p style="font-size: 13px; color: #374151; line-height: 1.6; margin-bottom: 12px;">
             ${this.escapeHtml(analysis.summary)}
           </p>
@@ -666,16 +689,41 @@ class SafeSpaceManager {
     }
   }
 
+  // Update website analysis error state
+  updateWebsiteAnalysisError(domain) {
+    const scoreNumber = document.getElementById("score-number")
+    const scoreFill = document.getElementById("score-fill")
+    const scoreDescription = document.getElementById("score-description")
+    const riskList = document.getElementById("risk-list")
+
+    if (scoreNumber) scoreNumber.textContent = "N/A"
+    if (scoreFill) {
+      scoreFill.style.width = "0%"
+      scoreFill.className = "score-fill"
+    }
+    if (scoreDescription) {
+      scoreDescription.textContent = `Unable to analyze ${domain || 'website'}. Privacy policy may not be available.`
+      scoreDescription.style.color = "#6b7280"
+    }
+    if (riskList) {
+      riskList.innerHTML = `
+        <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 12px;">
+          Analysis unavailable. The website may not have a publicly accessible privacy policy.
+        </div>
+      `
+    }
+  }
+
   getRiskIcon(type) {
     const icons = {
-      location_tracking: "📍",
-      data_sharing: "📊",
-      third_party: "🔓",
-      retention: "⏰",
-      user_control: "⚙️",
-      other: "⚠️"
+      location_tracking: "●",
+      data_sharing: "●",
+      third_party: "●",
+      retention: "●",
+      user_control: "●",
+      other: "●"
     }
-    return icons[type] || "⚠️"
+    return icons[type] || "●"
   }
 
   formatTimeAgo(timestamp) {

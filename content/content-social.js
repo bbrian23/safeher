@@ -401,36 +401,37 @@
         animation: slideDown 0.4s ease;
       `;
       
-      const riskIcon = analysis.riskLevel === 'high' ? '🚨' : '⚠️';
       const riskTitle = analysis.riskLevel === 'high' ? 'HIGH RISK DETECTED' : 'WARNING';
       
       alert.innerHTML = `
-        <div style="display: flex; align-items: flex-start; gap: 12px;">
-          <div style="font-size: 32px; flex-shrink: 0;">${riskIcon}</div>
+        <div style="display: flex; align-items: flex-start; gap: 16px;">
+          <div style="width: 4px; height: 100%; background: ${analysis.riskLevel === 'high' ? '#ef4444' : '#f59e0b'}; border-radius: 2px; flex-shrink: 0;"></div>
           <div style="flex: 1;">
-            <div style="font-weight: 700; font-size: 16px; margin-bottom: 6px;">
-              ${riskTitle}
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+              <div style="font-weight: 700; font-size: 15px; letter-spacing: 0.3px; text-transform: uppercase;">
+                ${riskTitle}
+              </div>
+              <button class="safespace-dismiss-alert" style="background: transparent; border: none; color: white; font-size: 20px; cursor: pointer; padding: 0; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; opacity: 0.8; transition: opacity 0.2s;">
+                ×
+              </button>
             </div>
-            <div style="font-size: 14px; margin-bottom: 8px; line-height: 1.4; opacity: 0.95;">
+            <div style="font-size: 13px; margin-bottom: 10px; line-height: 1.5; opacity: 0.95;">
               ${analysis.explanation || 'Harmful content detected'}
             </div>
             ${context.username ? `
-              <div style="font-size: 12px; opacity: 0.85; margin-bottom: 12px;">
-                From: <strong>${context.username}</strong> ${context.isComment ? '(Comment)' : '(Post)'}
+              <div style="font-size: 11px; opacity: 0.85; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
+                Source: <strong>${context.username}</strong> • ${context.isComment ? 'Comment' : 'Post'}
               </div>
             ` : ''}
             <div style="display: flex; gap: 8px; margin-top: 12px;">
-              <button class="safespace-view-alerts" style="flex: 1; padding: 10px; background: rgba(255, 255, 255, 0.2); color: white; border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 13px;">
+              <button class="safespace-view-alerts" style="flex: 1; padding: 10px 14px; background: rgba(255, 255, 255, 0.25); color: white; border: 1px solid rgba(255, 255, 255, 0.4); border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; transition: all 0.2s;">
                 View Details
               </button>
               ${context.username && analysis.suggestBlock ? `
-                <button class="safespace-block-now-alert" style="flex: 1; padding: 10px; background: rgba(255, 255, 255, 0.9); color: #ef4444; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px;">
+                <button class="safespace-block-now-alert" style="flex: 1; padding: 10px 14px; background: rgba(255, 255, 255, 0.95); color: #ef4444; border: none; border-radius: 6px; font-weight: 700; cursor: pointer; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; transition: all 0.2s;">
                   Block User
                 </button>
               ` : ''}
-              <button class="safespace-dismiss-alert" style="padding: 10px 16px; background: rgba(255, 255, 255, 0.2); color: white; border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 13px;">
-                ×
-              </button>
             </div>
           </div>
         </div>

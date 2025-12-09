@@ -1,17 +1,23 @@
 // Privacy Policy Scraper - Detects and extracts privacy policy content
 
-// Privacy policy detection patterns
-const PRIVACY_POLICY_PATTERNS = [
-  /privacy[\s-]?policy/i,
-  /privacy[\s-]?notice/i,
-  /data[\s-]?protection/i,
-  /terms[\s-]?of[\s-]?service/i,
-  /terms[\s-]?and[\s-]?conditions/i,
-  /user[\s-]?agreement/i
-];
-
 (function() {
   'use strict';
+
+  // Prevent double-injection which can redeclare identifiers
+  if (window.__safespacePrivacyScraperLoaded) {
+    return;
+  }
+  window.__safespacePrivacyScraperLoaded = true;
+
+  // Privacy policy detection patterns
+  const PRIVACY_POLICY_PATTERNS = [
+    /privacy[\s-]?policy/i,
+    /privacy[\s-]?notice/i,
+    /data[\s-]?protection/i,
+    /terms[\s-]?of[\s-]?service/i,
+    /terms[\s-]?and[\s-]?conditions/i,
+    /user[\s-]?agreement/i
+  ];
 
   // Find privacy policy links
   function findPrivacyPolicyLinks() {

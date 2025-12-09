@@ -5,7 +5,7 @@ import { RISK_LEVELS, ALERT_TYPES, RISK_TAXONOMY } from '../utils/constants.js';
 
 class ContentAnalyzer {
   constructor() {
-    this.systemPrompt = `You are an expert safety AI assistant specialized in detecting gender-based violence (GBV), cyberbullying, harassment, stalking, privacy/doxxing threats, and online safety threats. You must be HIGHLY SENSITIVE to any form of harmful content and use the provided taxonomy to broaden context detection.
+    this.systemPrompt = `You are an expert safety AI assistant specialized in detecting gender-based violence (GBV), cyberbullying, harassment, stalking, privacy/doxxing threats, and online safety threats. You must be HIGHLY SENSITIVE to any form of harmful content, obfuscations (leet, spacing, homoglyphs), and the expanded threat bank below. Use the taxonomy to broaden detection and flag severity appropriately.
 
 Analyze the provided text and identify ANY of the following:
 
@@ -138,7 +138,7 @@ ${context.replyTo ? `- Replying to: ${context.replyTo}` : ''}
 - Flag ANYTHING that could cause harm, distress, or safety concerns
 - If this is a COMMENT with harmful content, strongly suggest blocking
 
-Examples of harmful content (but detect ANY similar patterns; expand using the taxonomy):
+Examples of harmful content (but detect ANY similar patterns; expand using the taxonomy and the high-risk lists: killing/harm, weapons, rape/assault, doxxing/leak, stalking/monitoring, tech-tampering, deepfakes, sextortion, NCII, LGBTQIA+ outing, elder/child threats, symbolic threats like weapon emoji):
 - "I will share your photos ugly boy" → HIGH RISK
 - "You'll regret it" → HIGH RISK (threatening)
 - "Send me details or else" → HIGH RISK (coercive)
@@ -188,76 +188,154 @@ Provide your analysis in the specified JSON format.`;
   // Fallback analysis using keyword detection
   fallbackAnalysis(aiResponse, text) {
     const lowerText = text.toLowerCase();
-    
-    // High-risk keywords (cyberbullying, harassment, threats) - BROAD PATTERNS
-    const highRiskKeywords = [
-      // Photo sharing threats (many variations)
-      'share your photo', 'share your photos', 'share your pic', 'share your pics',
-      'post your photo', 'post your photos', 'post your pic', 'post your pics',
-      'expose you', 'expose your', 'leak your', 'leak your photo',
-      'publish your', 'reveal your', 'show everyone', 'show your',
-      'going to share', 'will share', 'gonna share', 'i will share',
-      'i\'ll share', 'i\'m going to share', 'i will post', 'i\'ll post',
-      
-      // Threats and intimidation
-      'you\'ll regret', 'you will regret', 'you\'ll see', 'you will see',
-      'what will happen', 'what happens next', 'or else', 'or you\'ll',
-      'if you don\'t', 'unless you', 'you better', 'you\'d better',
-      'kill', 'die', 'hurt', 'harm', 'threat', 'threaten',
-      
-      // Stalking and finding
-      'find you', 'find your', 'look for you', 'come for you', 'track you', 'track your',
-      'address', 'location', 'where you live', 'home address',
-      'where are you', 'where you at', 'where you work', 'where you study',
-      'stalk', 'stalking', 'following you'
+    const compactText = lowerText.replace(/\s+/g, '');
+    const strippedText = lowerText.replace(/[^a-z0-9]/g, '');
+    const deobfuscate = (s) => s
+      .replace(/@/g, 'a')
+      .replace(/0/g, 'o')
+      .replace(/1/g, 'i')
+      .replace(/3/g, 'e')
+      .replace(/4/g, 'a')
+      .replace(/5/g, 's')
+      .replace(/7/g, 't')
+      .replace(/\$/g, 's')
+      .replace(/8/g, 'b')
+      .replace(/!/g, 'i');
+    const leetText = deobfuscate(strippedText);
+
+    const immediateThreats = [
+      'kill you', 'end you', 'finish you', 'ruin you', 'destroy you', 'bury you',
+      'put you in the ground', 'no one will find you', "you won't survive", "you're done",
+      "i'll break you", "i'm coming for you", 'final warning', 'last day', "won't wake up",
+      'rape', 'assault you', 'beat you down', 'choke you', 'strangle', 'slap you', 'drag you',
+      'hurt you badly', 'force myself on you', 'violate you', 'punish you physically',
+      'k!ll', 'keal', 'kil u', 'u ded', 'u finna die', 'disappear you', 'disapear u', 'u dead'
     ];
-    
-    // Cyberbullying keywords - COMPREHENSIVE
+
+    const weaponsAndViolence = [
+      'gun', 'knife', 'blade', 'razor', 'acid', 'poison', 'rope', 'wire', 'belt', 'hammer',
+      'bat', 'lighter', 'fire', 'burn you', 'bleach', 'injection', 'acid attack', 'shoot you',
+      'stab you'
+    ];
+
+    const indirectThreats = [
+      'accidents happen', "you'll see", 'you know what i can do', "you won't like what happens next",
+      'mark my words', 'swear to god', 'last time', 'final warning'
+    ];
+
+    const stalkingAndMonitoring = [
+      'tracking you', 'i see you', 'i watched you', 'i saw your route', 'your commute', 'your building',
+      'cctv', 'hidden mic', 'secret camera', 'gps on you', 'geotag', 'live location', 'loc8tion',
+      'stalk', 'stalking', 'following you', 'outside your house', 'wait outside'
+    ];
+
+    const techAbuse = [
+      'remote access', 'screen mirroring', 'cloned your phone', 'cloned sim', 'spyware', 'rat tool',
+      'keylogger', 'hacked your cloud', 'logged into your google id', 'apple id', 'session hijack',
+      'send me your passwords', 'share your passcode', 'send your otp', 'two-factor code'
+    ];
+
+    const deepfakeAbuse = [
+      'deepfake your face', 'ai porn of you', 'fake your voice', 'clone your voice', 'voiceprint',
+      'morph your photos', 'fake call from your number'
+    ];
+
+    const doxxingAndLeak = [
+      'dox you', 'expose you', 'leak your info', 'drop your address', 'release your number',
+      'post your details', 'publicize your secrets', 'mass share your past', 'leak your location',
+      'leak your chats', 'post your screenshots', 'd0x', 'le@k', 'leke'
+    ];
+
+    const sextortion = [
+      'pay me or else', 'send money or i leak it', 'bitcoin or i post this', 'transfer now',
+      'buy me credits', "i'll ruin your career", 'your nudes', 'your private photos',
+      'intimate videos', "i'll post your clips", 'explicit images', 'sex tape', 'publish your pictures',
+      'nudez', 'nudz', 'pr0n', 'p*rn', 'onlyfans will be public'
+    ];
+
+    const sexualHarassment = [
+      'show me your body', 'bend over', 'sexual demands', 'talk dirty', 'send sexy pics',
+      'your body is for me', 'objectify', 'explicit request'
+    ];
+
+    const misogynySlurs = [
+      'whore', 'slut', 'bitch', 'cunt', 'thot', 'skank', 'tramp', 'homewrecker', 'easy', 'loose',
+      'unpure', 'used goods', 'characterless', 'besharam', 'awra', 'dayouth', 'spoilt woman'
+    ];
+
+    const harassmentPower = [
+      'who do you think will believe you', 'women like you deserve it', "you're asking for it"
+    ];
+
+    const controlAndIsolation = [
+      "don't talk to anyone", 'block your friends', 'cut off your family', 'delete your accounts',
+      "you can't go out", 'need my permission', 'you report to me', 'stay home', 'you belong to me'
+    ];
+
+    const gaslighting = [
+      "you're imagining", "you're dramatic", 'you misunderstood', 'nobody else wants you',
+      "you're lucky i stay with you", 'no one will believe you'
+    ];
+
+    const financialControl = [
+      'give me your salary', "you can't buy anything", "i'll hold your documents",
+      'your money is mine', 'hand over passport', 'give me your id'
+    ];
+
+    const abandonmentThreats = [
+      "i'll leave you with nothing", "i'll take the kids", "you'll be alone forever"
+    ];
+
+    const lgbtqAbuse = [
+      "i'll out you", "everyone will know you're gay", "i'll tell your family", "you're not a real man",
+      "you're unnatural", 'conversion', 'destroy your hormones', 'deadname', "i'll expose your medical status",
+      'hiv status', 'you will die alone diseased'
+    ];
+
+    const elderAbuse = [
+      "i'll put you in a home", "i'll stop feeding you", "i'll take your medication",
+      'i control your pension', 'sign this paper now', "i'll cut your allowance", 'give me your insurance card'
+    ];
+
+    const childRelatedThreats = [
+      "i'll take the kids", "you'll never see your child", "i'll hurt your child",
+      "i'll tell them lies about you", 'unfit parent', 'bad mother'
+    ];
+
+    const symbolThreats = ['🔪', '🪓', '🔫', '⚰️', '😈', '👁️', '🩸', 'rope', 'noose'];
+
     const cyberbullyingKeywords = [
-      // Appearance insults
       'ugly', 'fat', 'skinny', 'disgusting', 'gross', 'hideous',
       'stupid', 'idiot', 'moron', 'dumb', 'fool', 'loser',
       'pathetic', 'worthless', 'useless', 'trash', 'garbage',
       'nobody likes you', 'everyone hates you', 'no one wants you',
       'you deserve', 'should die', 'you should', 'you need to',
-      
-      // Gender-based insults
       'bitch', 'slut', 'whore', 'hoe', 'thot',
       'weak', 'pathetic man', 'real man', 'be a man',
       'women should', 'men should', 'because you\'re a',
-      
-      // Emotional harm
       'nobody cares', 'no one cares', 'who cares', 'who asked',
       'shut up', 'go away', 'leave', 'get lost', 'fuck off'
     ];
-    
-    // Medium-risk keywords
+
     const mediumRiskKeywords = [
       'harass', 'abuse', 'violence', 'attack', 'expose', 'leak',
       'personal info', 'private message', 'dox', 'embarrass you',
-      'make fun of', 'laugh at you'
+      'make fun of', 'laugh at you', 'watch your house'
     ];
-    
-    // Privacy risk keywords
+
     const privacyKeywords = [
       'location', 'gps', 'tracking', 'where are you', 'your address',
       'phone number', 'email', 'real name', 'where you work', 'where you study'
     ];
-    
-    // Gender-based violence keywords - COMPREHENSIVE
+
     const gbvKeywords = [
-      // Control and submission
       'women should', 'men should', 'because you\'re a woman', 'because you\'re a man',
       'obey', 'submit', 'control', 'belongs to', 'property', 'my woman', 'my man',
       'you belong to', 'you\'re mine', 'you\'re my', 'do as i say',
       'listen to me', 'do what i tell you', 'follow my orders',
-      
-      // Gender stereotypes
       'act like a man', 'be a man', 'man up', 'real men',
       'women belong', 'women are meant to', 'girls should', 'boys should',
       'that\'s a woman\'s job', 'that\'s a man\'s job',
-      
-      // Discriminatory language
       'inferior', 'superior', 'weak', 'strong', 'emotional', 'logical'
     ];
 
@@ -266,44 +344,44 @@ Provide your analysis in the specified JSON format.`;
     const indicators = [];
     let suggestBlock = false;
 
-    // Check for high-risk patterns (threats, photo sharing threats)
-    // Use word boundaries to avoid false positives, but be comprehensive
-    for (const keyword of highRiskKeywords) {
-      // Check if keyword appears in text (case-insensitive, partial match)
-      const keywordLower = keyword.toLowerCase();
-      if (lowerText.includes(keywordLower)) {
+    const containsAny = (phrase) => {
+      const p = phrase.toLowerCase();
+      const compact = p.replace(/\s+/g, '');
+      return lowerText.includes(p) || compactText.includes(compact) || leetText.includes(compact);
+    };
+
+    // Threats / violence
+    for (const keyword of [...immediateThreats, ...weaponsAndViolence, ...indirectThreats]) {
+      if (containsAny(keyword)) {
         riskLevel = RISK_LEVELS.HIGH;
         riskType = ALERT_TYPES.THREAT;
-        indicators.push(`Contains threatening language: "${keyword}"`);
+        indicators.push(`Contains threat/violence: "${keyword}"`);
         suggestBlock = true;
-        // Don't break - check for multiple indicators
       }
     }
 
-    // Check for cyberbullying (can combine with threats)
+    // Cyberbullying
     for (const keyword of cyberbullyingKeywords) {
-      if (lowerText.includes(keyword.toLowerCase())) {
+      if (containsAny(keyword)) {
         if (riskLevel === RISK_LEVELS.SAFE) {
           riskLevel = RISK_LEVELS.HIGH;
           riskType = ALERT_TYPES.HARASSMENT;
         }
         indicators.push(`Cyberbullying detected: "${keyword}"`);
         suggestBlock = true;
-        // Don't break - collect all indicators
       }
     }
 
-    // Check for GBV (can combine with other risks)
-    for (const keyword of gbvKeywords) {
-      if (lowerText.includes(keyword.toLowerCase())) {
+    // GBV / misogyny
+    for (const keyword of [...gbvKeywords, ...misogynySlurs, ...harassmentPower]) {
+      if (containsAny(keyword)) {
         if (riskLevel === RISK_LEVELS.SAFE) {
           riskLevel = RISK_LEVELS.MEDIUM;
           riskType = ALERT_TYPES.HARASSMENT;
         } else if (riskLevel === RISK_LEVELS.MEDIUM) {
-          riskLevel = RISK_LEVELS.HIGH; // Upgrade if combined with other risks
+          riskLevel = RISK_LEVELS.HIGH;
         }
-        indicators.push(`Gender-based content: "${keyword}"`);
-        // Don't break - collect all indicators
+        indicators.push(`Gender-based or power harassment: "${keyword}"`);
       }
     }
     
@@ -327,10 +405,105 @@ Provide your analysis in the specified JSON format.`;
       }
     }
 
-    // Check for privacy risks
+    // Stalking/monitoring
+    for (const keyword of stalkingAndMonitoring) {
+      if (containsAny(keyword)) {
+        riskLevel = RISK_LEVELS.HIGH;
+        riskType = ALERT_TYPES.THREAT;
+        indicators.push(`Stalking/monitoring: "${keyword}"`);
+        suggestBlock = true;
+      }
+    }
+
+    // Tech abuse & deepfake
+    for (const keyword of [...techAbuse, ...deepfakeAbuse]) {
+      if (containsAny(keyword)) {
+        if (riskLevel === RISK_LEVELS.SAFE) {
+          riskLevel = RISK_LEVELS.MEDIUM;
+          riskType = ALERT_TYPES.ACCOUNT_RISK;
+        }
+        indicators.push(`Tech-based abuse: "${keyword}"`);
+      }
+    }
+
+    // Doxxing / leak / sextortion
+    for (const keyword of [...doxxingAndLeak, ...sextortion]) {
+      if (containsAny(keyword)) {
+        if (riskLevel === RISK_LEVELS.SAFE) {
+          riskLevel = RISK_LEVELS.HIGH;
+          riskType = ALERT_TYPES.PRIVACY;
+        }
+        indicators.push(`Dox/leak/extortion: "${keyword}"`);
+        suggestBlock = true;
+      }
+    }
+
+    // Sexual harassment
+    for (const keyword of sexualHarassment) {
+      if (containsAny(keyword)) {
+        if (riskLevel === RISK_LEVELS.SAFE) {
+          riskLevel = RISK_LEVELS.MEDIUM;
+          riskType = ALERT_TYPES.HARASSMENT;
+        }
+        indicators.push(`Sexual harassment: "${keyword}"`);
+      }
+    }
+
+    // Control, gaslighting, financial control, abandonment
+    for (const keyword of [...controlAndIsolation, ...gaslighting, ...financialControl, ...abandonmentThreats]) {
+      if (containsAny(keyword)) {
+        if (riskLevel === RISK_LEVELS.SAFE) {
+          riskLevel = RISK_LEVELS.MEDIUM;
+          riskType = ALERT_TYPES.MANIPULATION;
+        }
+        indicators.push(`Control/manipulation: "${keyword}"`);
+      }
+    }
+
+    // LGBTQIA+ specific abuse
+    for (const keyword of lgbtqAbuse) {
+      if (containsAny(keyword)) {
+        riskLevel = RISK_LEVELS.HIGH;
+        riskType = ALERT_TYPES.GBV;
+        indicators.push(`LGBTQIA+ abuse: "${keyword}"`);
+        suggestBlock = true;
+      }
+    }
+
+    // Elder abuse
+    for (const keyword of elderAbuse) {
+      if (containsAny(keyword)) {
+        riskLevel = RISK_LEVELS.MEDIUM;
+        riskType = ALERT_TYPES.THREAT;
+        indicators.push(`Elder abuse: "${keyword}"`);
+        suggestBlock = true;
+      }
+    }
+
+    // Child-related threats
+    for (const keyword of childRelatedThreats) {
+      if (containsAny(keyword)) {
+        riskLevel = RISK_LEVELS.HIGH;
+        riskType = ALERT_TYPES.THREAT;
+        indicators.push(`Child-related threat: "${keyword}"`);
+        suggestBlock = true;
+      }
+    }
+
+    // Symbolic threats
+    for (const keyword of symbolThreats) {
+      if (lowerText.includes(keyword) || compactText.includes(keyword)) {
+        riskLevel = RISK_LEVELS.HIGH;
+        riskType = ALERT_TYPES.THREAT;
+        indicators.push(`Symbolic threat: "${keyword}"`);
+        suggestBlock = true;
+      }
+    }
+
+    // Privacy risks
     if (riskLevel === RISK_LEVELS.SAFE) {
       for (const keyword of privacyKeywords) {
-        if (lowerText.includes(keyword)) {
+        if (containsAny(keyword)) {
           riskLevel = RISK_LEVELS.MEDIUM;
           riskType = ALERT_TYPES.PRIVACY;
           indicators.push(`Privacy concern: "${keyword}"`);
@@ -339,10 +512,10 @@ Provide your analysis in the specified JSON format.`;
       }
     }
 
-    // Check for medium-risk patterns
+    // Medium-risk patterns
     if (riskLevel === RISK_LEVELS.SAFE) {
       for (const keyword of mediumRiskKeywords) {
-        if (lowerText.includes(keyword)) {
+        if (containsAny(keyword)) {
           riskLevel = RISK_LEVELS.MEDIUM;
           riskType = ALERT_TYPES.HARASSMENT;
           indicators.push(`Concerning language: "${keyword}"`);
