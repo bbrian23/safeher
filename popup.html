@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SafeSpace - Safety Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="extension-popup">
+        <!-- Header -->
+        <header class="popup-header">
+            <div class="header-content">
+                <div class="logo-section">
+                    <div class="logo-icon">🛡️</div>
+                    <h1>SafeSpace</h1>
+                </div>
+                <button class="settings-btn" title="Settings">⚙️</button>
+            </div>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <nav class="popup-nav">
+            <button class="nav-tab active" data-tab="dashboard">Dashboard</button>
+            <button class="nav-tab" data-tab="alerts">Alerts</button>
+            <button class="nav-tab" data-tab="website">Website</button>
+            <button class="nav-tab" data-tab="settings">Settings</button>
+        </nav>
+
+        <!-- Dashboard Tab -->
+        <div class="tab-content active" id="dashboard">
+            <!-- Status Indicator -->
+            <div id="status-indicator" class="status-indicator">
+                <div class="status-loading">Checking status...</div>
+            </div>
+            
+            <!-- Quick Stats -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon red-accent">📍</div>
+                    <div class="stat-info">
+                        <span class="stat-label">High Risk Posts</span>
+                        <span class="stat-value" id="stat-high-risk">0</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon yellow-accent">⚠️</div>
+                    <div class="stat-info">
+                        <span class="stat-label">Warnings</span>
+                        <span class="stat-value" id="stat-warnings">0</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">👥</div>
+                    <div class="stat-info">
+                        <span class="stat-label">Flagged Accounts</span>
+                        <span class="stat-value" id="stat-flagged">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="activity-section">
+                <h3 class="section-title">Recent Activity</h3>
+                <div class="activity-list" id="activity-list">
+                    <div class="activity-item" style="text-align: center; padding: 20px; color: #6b7280;">
+                        <p class="activity-text">No recent activity</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alerts Tab -->
+        <div class="tab-content" id="alerts">
+            <div class="alerts-container">
+                <!-- High Risk Alert -->
+                <div class="alert-item alert-high">
+                    <div class="alert-indicator high"></div>
+                    <div class="alert-content">
+                        <div class="alert-title">Possible Harassment Detected</div>
+                        <p class="alert-description">A comment contains aggressive language patterns</p>
+                        <div class="alert-meta">@user_handle • 2 hours ago</div>
+                    </div>
+                    <div class="alert-actions">
+                        <button class="action-btn hide-btn" title="Hide">👁️</button>
+                        <button class="action-btn report-btn" title="Report">🚩</button>
+                    </div>
+                </div>
+
+                <!-- Medium Risk Alert -->
+                <div class="alert-item alert-medium">
+                    <div class="alert-indicator medium"></div>
+                    <div class="alert-content">
+                        <div class="alert-title">Privacy Risk Detected</div>
+                        <p class="alert-description">Profile may be sharing excessive personal information</p>
+                        <div class="alert-meta">@another_user • 4 hours ago</div>
+                    </div>
+                    <div class="alert-actions">
+                        <button class="action-btn hide-btn" title="Hide">👁️</button>
+                        <button class="action-btn report-btn" title="Report">🚩</button>
+                    </div>
+                </div>
+
+                <!-- Low Risk Alert -->
+                <div class="alert-item alert-low">
+                    <div class="alert-indicator low"></div>
+                    <div class="alert-content">
+                        <div class="alert-title">Suspicious Link Detected</div>
+                        <p class="alert-description">Post contains a potentially unsafe external link</p>
+                        <div class="alert-meta">@link_post • 6 hours ago</div>
+                    </div>
+                    <div class="alert-actions">
+                        <button class="action-btn hide-btn" title="Hide">👁️</button>
+                        <button class="action-btn report-btn" title="Report">🚩</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Website Analysis Tab -->
+        <div class="tab-content" id="website">
+            <div class="website-analysis">
+                <!-- Safety Score -->
+                <div class="safety-score-section">
+                    <h3 class="section-title">Website Safety Score</h3>
+                    <div class="score-display">
+                        <div class="score-meter">
+                            <div class="score-fill" id="score-fill" style="width: 0%"></div>
+                        </div>
+                        <div class="score-text">
+                            <span class="score-number" id="score-number">--</span>
+                            <span class="score-label">/100</span>
+                        </div>
+                    </div>
+                    <p class="score-description" id="score-description">Analyzing website...</p>
+                </div>
+
+                <!-- Risk Factors -->
+                <div class="risk-factors">
+                    <h4 class="subsection-title">Risk Factors Found</h4>
+                    <div class="risk-list" id="risk-list">
+                        <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 12px;">
+                            No analysis available yet
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Terms Summary -->
+                <div class="terms-summary">
+                    <h4 class="subsection-title">Terms & Conditions Summary</h4>
+                    <div id="terms-summary-content" style="padding: 12px 0; font-size: 13px; color: #374151; line-height: 1.6;">
+                        <p style="color: #6b7280;">Privacy policy analysis will appear here once available.</p>
+                    </div>
+                    <button class="view-details-btn" id="view-full-analysis-btn">View Full Analysis</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Tab -->
+        <div class="tab-content" id="settings">
+            <div class="settings-container">
+                <h3 class="section-title">Extension Settings</h3>
+                
+                <form id="settings-form">
+                    <div class="setting-item">
+                        <label for="api-key-input" class="setting-label">
+                            OpenRouter API Key
+                        </label>
+                        <input type="password" id="api-key-input" class="setting-input" 
+                            placeholder="sk-or-v1-...">
+                        <div class="setting-hint">
+                            Get your API key from <a href="https://openrouter.ai" target="_blank" style="color: #2563eb;">openrouter.ai</a>
+                        </div>
+                    </div>
+
+                    <div class="setting-item">
+                        <label class="setting-checkbox">
+                            <input type="checkbox" id="monitoring-enabled">
+                            <span>Enable continuous monitoring</span>
+                        </label>
+                    </div>
+
+                    <div class="setting-item">
+                        <label class="setting-checkbox">
+                            <input type="checkbox" id="auto-hide-high">
+                            <span>Auto-hide high-risk content</span>
+                        </label>
+                    </div>
+
+                    <div class="setting-item">
+                        <label class="setting-checkbox">
+                            <input type="checkbox" id="auto-hide-medium">
+                            <span>Auto-hide medium-risk content</span>
+                        </label>
+                    </div>
+
+                    <button type="submit" class="save-settings-btn">Save Settings</button>
+                </form>
+
+                <div class="settings-section">
+                    <h4 class="subsection-title">Testing & Debugging</h4>
+                    <button class="test-btn" id="test-alert-btn">Generate Test Alert</button>
+                    <div class="setting-hint" style="margin-top: 8px;">
+                        Click to generate a test alert and verify the extension is working
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h4 class="subsection-title">Data Management</h4>
+                    <button class="clear-data-btn" id="clear-cache-btn">Clear Cache</button>
+                    <button class="clear-data-btn" id="clear-alerts-btn">Clear All Alerts</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="popup-footer">
+            <p>SafeSpace v1.0 • Your privacy matters</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
