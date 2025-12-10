@@ -84,4 +84,3 @@ This extension complies with:
 ---
 
 **By using SafeSpace, you acknowledge that you have read and understood this Privacy Policy.**
-
