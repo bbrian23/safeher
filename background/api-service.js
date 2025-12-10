@@ -51,7 +51,7 @@ class ApiService {
       try {
         refererUrl = chrome.runtime.getURL('');
       } catch (e) {
-        refererUrl = 'https://safespace-extension';
+        refererUrl = 'https://iwitness-extension';
       }
 
       const response = await fetch(OPENROUTER_API_URL, {
@@ -60,7 +60,7 @@ class ApiService {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${apiKey}`,
           'HTTP-Referer': refererUrl,
-          'X-Title': 'SafeSpace Extension'
+          'X-Title': 'iWitness Extension'
         },
         body: JSON.stringify(requestBody)
       });

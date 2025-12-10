@@ -1,7 +1,7 @@
-// SafeSpace Extension Script
+// iWitness Extension Script
 // Main popup interaction logic
 
-class SafeSpaceManager {
+class iWitnessManager {
   constructor() {
     this.currentTab = "dashboard"
     this.settings = null
@@ -10,7 +10,7 @@ class SafeSpaceManager {
   }
 
   init() {
-    console.log("[SafeSpace] Initializing SafeSpaceManager...")
+    console.log("[iWitness] Initializing iWitnessManager...")
     
     // Setup tab navigation first - use immediate execution
     this.setupTabNavigation()
@@ -20,7 +20,7 @@ class SafeSpaceManager {
     
     // Load data after a small delay to ensure DOM is ready
     setTimeout(() => {
-      console.log("[SafeSpace] Loading data...")
+      console.log("[iWitness] Loading data...")
       this.loadData()
     }, 100)
   }
@@ -30,7 +30,7 @@ class SafeSpaceManager {
     // Use event delegation on the nav container
     const navContainer = document.querySelector(".popup-nav")
     if (!navContainer) {
-      console.error("[SafeSpace] Nav container not found!")
+      console.error("[iWitness] Nav container not found!")
       return
     }
 
@@ -42,10 +42,10 @@ class SafeSpaceManager {
       e.stopPropagation()
       
       const tabName = tab.getAttribute("data-tab")
-      console.log("[SafeSpace] Tab clicked:", tabName)
+      console.log("[iWitness] Tab clicked:", tabName)
       
       if (!tabName) {
-        console.warn("[SafeSpace] Tab clicked but no data-tab attribute found")
+        console.warn("[iWitness] Tab clicked but no data-tab attribute found")
         return
       }
 
@@ -61,9 +61,9 @@ class SafeSpaceManager {
       const targetContent = document.getElementById(tabName)
       if (targetContent) {
         targetContent.classList.add("active")
-        console.log("[SafeSpace] Switched to tab:", tabName)
+        console.log("[iWitness] Switched to tab:", tabName)
       } else {
-        console.error("[SafeSpace] Tab content not found for:", tabName)
+        console.error("[iWitness] Tab content not found for:", tabName)
         return
       }
 
@@ -215,7 +215,7 @@ class SafeSpaceManager {
   // Report Alert
   reportAlert(alertElement) {
     const title = alertElement.querySelector(".alert-title").textContent
-    this.showNotification("Reported", `"${title}" has been reported to SafeSpace team`)
+    this.showNotification("Reported", `"${title}" has been reported to iWitness team`)
     console.log("Report sent:", title)
   }
 
@@ -273,7 +273,7 @@ class SafeSpaceManager {
 
   // Load Data from background
   async loadData() {
-    console.log("[SafeSpace] Loading extension data...")
+    console.log("[iWitness] Loading extension data...")
     this.updateStatus("Checking connection...", "loading")
     
     try {
@@ -308,17 +308,17 @@ class SafeSpaceManager {
       // Load stats - always try to load and display
       try {
         const statsResponse = await chrome.runtime.sendMessage({ action: "getStats" })
-        console.log("[SafeSpace] Stats response:", statsResponse)
+        console.log("[iWitness] Stats response:", statsResponse)
         if (statsResponse && statsResponse.success && statsResponse.stats) {
-          console.log("[SafeSpace] Updating stats with:", statsResponse.stats)
+          console.log("[iWitness] Updating stats with:", statsResponse.stats)
           this.updateStats(statsResponse.stats)
         } else {
-          console.warn("[SafeSpace] Stats response invalid, using defaults:", statsResponse)
+          console.warn("[iWitness] Stats response invalid, using defaults:", statsResponse)
           // Set default stats
           this.updateStats({ highRiskPosts: 0, warnings: 0, flaggedAccounts: 0, totalAlerts: 0 })
         }
       } catch (error) {
-        console.error("[SafeSpace] Error loading stats:", error)
+        console.error("[iWitness] Error loading stats:", error)
         // Set default stats on error - ensure UI shows something
         this.updateStats({ highRiskPosts: 0, warnings: 0, flaggedAccounts: 0, totalAlerts: 0 })
       }
@@ -348,7 +348,7 @@ class SafeSpaceManager {
           })
           
           if (analysisResponse && analysisResponse.success && analysisResponse.analysis) {
-            console.log(`[SafeSpace] Privacy analysis found for ${domain}, score: ${analysisResponse.analysis.safetyScore}`)
+            console.log(`[iWitness] Privacy analysis found for ${domain}, score: ${analysisResponse.analysis.safetyScore}`)
             this.updateWebsiteAnalysis(analysisResponse.analysis, domain)
           } else {
             // Show loading state and trigger analysis if not already done
@@ -370,7 +370,7 @@ class SafeSpaceManager {
                   domain: domain
                 })
                 if (retryResponse && retryResponse.success && retryResponse.analysis) {
-                  console.log(`[SafeSpace] Privacy analysis completed for ${domain}, score: ${retryResponse.analysis.safetyScore}`)
+                  console.log(`[iWitness] Privacy analysis completed for ${domain}, score: ${retryResponse.analysis.safetyScore}`)
                   this.updateWebsiteAnalysis(retryResponse.analysis, domain)
                 } else if (index === retryDelays.length - 1) {
                   // Last retry failed - show error state
@@ -385,12 +385,12 @@ class SafeSpaceManager {
         }
       } catch (error) {
         // Ignore errors for chrome:// pages
-        console.log('[SafeSpace] Cannot analyze chrome:// pages');
+        console.log('[iWitness] Cannot analyze chrome:// pages');
         this.updateWebsiteAnalysis(null, null)
       }
 
     } catch (error) {
-      console.error("[SafeSpace] Error loading data:", error)
+      console.error("[iWitness] Error loading data:", error)
       this.updateStatus("Error loading data. Check console for details.", "error")
     }
   }
@@ -441,12 +441,12 @@ class SafeSpaceManager {
 
   // Update stats in dashboard
   updateStats(stats) {
-    console.log("[SafeSpace] Updating stats:", stats)
+    console.log("[iWitness] Updating stats:", stats)
     
     // Ensure we're in the dashboard tab
     const dashboardTab = document.getElementById("dashboard")
     if (!dashboardTab || !dashboardTab.classList.contains("active")) {
-      console.log("[SafeSpace] Dashboard tab not active, stats will update when tab is shown")
+      console.log("[iWitness] Dashboard tab not active, stats will update when tab is shown")
       // Store stats to update later
       this.pendingStats = stats
       return
@@ -456,7 +456,7 @@ class SafeSpaceManager {
     const warningsEl = document.getElementById("stat-warnings")
     const flaggedEl = document.getElementById("stat-flagged")
     
-    console.log("[SafeSpace] Stat elements found:", {
+    console.log("[iWitness] Stat elements found:", {
       highRisk: !!highRiskEl,
       warnings: !!warningsEl,
       flagged: !!flaggedEl
@@ -464,23 +464,23 @@ class SafeSpaceManager {
     
     if (highRiskEl) {
       highRiskEl.textContent = String(stats.highRiskPosts || 0)
-      console.log("[SafeSpace] Updated high risk:", stats.highRiskPosts || 0)
+      console.log("[iWitness] Updated high risk:", stats.highRiskPosts || 0)
     } else {
-      console.error("[SafeSpace] stat-high-risk element not found! Available IDs:", Array.from(document.querySelectorAll("[id^='stat-']")).map(el => el.id))
+      console.error("[iWitness] stat-high-risk element not found! Available IDs:", Array.from(document.querySelectorAll("[id^='stat-']")).map(el => el.id))
     }
     
     if (warningsEl) {
       warningsEl.textContent = String(stats.warnings || 0)
-      console.log("[SafeSpace] Updated warnings:", stats.warnings || 0)
+      console.log("[iWitness] Updated warnings:", stats.warnings || 0)
     } else {
-      console.error("[SafeSpace] stat-warnings element not found!")
+      console.error("[iWitness] stat-warnings element not found!")
     }
     
     if (flaggedEl) {
       flaggedEl.textContent = String(stats.flaggedAccounts || 0)
-      console.log("[SafeSpace] Updated flagged:", stats.flaggedAccounts || 0)
+      console.log("[iWitness] Updated flagged:", stats.flaggedAccounts || 0)
     } else {
-      console.error("[SafeSpace] stat-flagged element not found!")
+      console.error("[iWitness] stat-flagged element not found!")
     }
 
     // Update recent activity
@@ -1088,7 +1088,7 @@ class SafeSpaceManager {
       if (areaName === "local") {
         // Reload data when storage changes
         if (changes.alerts) {
-          console.log("[SafeSpace] Alerts changed, reloading...")
+          console.log("[iWitness] Alerts changed, reloading...")
           this.loadData()
         }
         if (changes.settings) {
@@ -1100,7 +1100,7 @@ class SafeSpaceManager {
     // Also listen for messages from background about new alerts
     chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
       if (request.action === "newAlert") {
-        console.log("[SafeSpace] New alert received:", request.alert)
+        console.log("[iWitness] New alert received:", request.alert)
         // Refresh alerts list
         await this.loadAlerts()
         
@@ -1121,7 +1121,7 @@ class SafeSpaceManager {
       }
       
       if (request.action === "privacyAnalysisUpdated") {
-        console.log("[SafeSpace] Privacy analysis updated, refreshing...")
+        console.log("[iWitness] Privacy analysis updated, refreshing...")
         // Refresh website analysis immediately so it stops showing "Analyzing..."
         if (request.analysis) {
           this.updateWebsiteAnalysis(request.analysis, request.domain || null)
@@ -1137,10 +1137,10 @@ class SafeSpaceManager {
 // Initialize based on context
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", () => {
-    new SafeSpaceManager()
+    new iWitnessManager()
   })
 } else {
-  new SafeSpaceManager()
+  new iWitnessManager()
 }
 
 // Add CSS animations to document if not already present

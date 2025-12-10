@@ -944,54 +944,70 @@ const translations = {
     notification.id = 'safespace-page-notification';
     notification.style.cssText = `
       position: fixed;
-      top: 20px;
-      right: 20px;
-      background: linear-gradient(135deg, #2563eb, #0369a1);
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: linear-gradient(135deg, #1e40af, #3b82f6, #60a5fa);
       color: white;
-      padding: 16px 20px;
-      border-radius: 12px;
-      box-shadow: 0 8px 16px rgba(37, 99, 235, 0.3);
-      z-index: 999999;
+      padding: 32px 40px;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(37, 99, 235, 0.5), 0 0 40px rgba(59, 130, 246, 0.4);
+      z-index: 2147483647;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      font-size: 14px;
-      max-width: 320px;
-      animation: slideInRight 0.3s ease;
+      font-size: 18px;
+      min-width: 400px;
+      max-width: 500px;
+      animation: slideInScale 0.5s ease, pulseGlow 2s ease-in-out infinite;
       cursor: pointer;
+      border: 3px solid rgba(255, 255, 255, 0.3);
+      backdrop-filter: blur(10px);
     `;
     
     notification.innerHTML = `
-      <div style="display: flex; align-items: center; gap: 12px;">
-        <div style="font-size: 24px;">🛡️</div>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 16px; text-align: center;">
+        <div style="font-size: 64px; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));">🛡️</div>
         <div style="flex: 1;">
-          <div style="font-weight: 700; margin-bottom: 4px;">SafeSpace Active</div>
-          <div style="font-size: 12px; opacity: 0.9;">Monitoring Facebook</div>
+          <div style="font-weight: 900; font-size: 32px; margin-bottom: 8px; text-shadow: 0 2px 8px rgba(0,0,0,0.3); letter-spacing: 1px;">iWITNESS</div>
+          <div style="font-weight: 700; font-size: 20px; margin-bottom: 12px; opacity: 0.95;">ACTIVE & MONITORING</div>
+          <div style="font-size: 16px; opacity: 0.9; font-weight: 500;">Protecting you on Facebook</div>
         </div>
-        <div style="font-size: 18px; opacity: 0.7;">×</div>
+        <div style="font-size: 14px; opacity: 0.8; margin-top: 8px; font-weight: 400;">Click to dismiss</div>
       </div>
     `;
     
-    // Add animation
+    // Add enhanced animations
     if (!document.getElementById('safespace-notification-styles')) {
       const style = document.createElement('style');
       style.id = 'safespace-notification-styles';
       style.textContent = `
-        @keyframes slideInRight {
-          from {
-            transform: translateX(400px);
+        @keyframes slideInScale {
+          0% {
+            transform: translate(-50%, -50%) scale(0.5);
             opacity: 0;
           }
-          to {
-            transform: translateX(0);
+          50% {
+            transform: translate(-50%, -50%) scale(1.05);
+          }
+          100% {
+            transform: translate(-50%, -50%) scale(1);
             opacity: 1;
           }
         }
-        @keyframes slideOutRight {
+        @keyframes pulseGlow {
+          0%, 100% {
+            box-shadow: 0 20px 60px rgba(37, 99, 235, 0.5), 0 0 40px rgba(59, 130, 246, 0.4);
+          }
+          50% {
+            box-shadow: 0 20px 60px rgba(37, 99, 235, 0.7), 0 0 60px rgba(59, 130, 246, 0.6);
+          }
+        }
+        @keyframes slideOutScale {
           from {
-            transform: translateX(0);
+            transform: translate(-50%, -50%) scale(1);
             opacity: 1;
           }
           to {
-            transform: translateX(400px);
+            transform: translate(-50%, -50%) scale(0.5);
             opacity: 0;
           }
         }
@@ -1003,25 +1019,25 @@ const translations = {
     
     // Close on click
     notification.addEventListener('click', () => {
-      notification.style.animation = 'slideOutRight 0.3s ease';
+      notification.style.animation = 'slideOutScale 0.4s ease';
       setTimeout(() => {
         if (notification.parentElement) {
           notification.remove();
         }
-      }, 300);
+      }, 400);
     });
     
-    // Auto-close after 5 seconds
+    // Auto-close after 8 seconds (longer for visibility)
     setTimeout(() => {
       if (notification.parentElement) {
-        notification.style.animation = 'slideOutRight 0.3s ease';
+        notification.style.animation = 'slideOutScale 0.4s ease';
         setTimeout(() => {
           if (notification.parentElement) {
             notification.remove();
           }
-        }, 300);
+        }, 400);
       }
-    }, 5000);
+    }, 8000);
   }
 
   // Initialize when page is ready

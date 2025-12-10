@@ -10,13 +10,13 @@ import { PLATFORMS, BATCH_SIZE, ANALYSIS_DELAY } from '../utils/constants.js';
 
 // Initialize on install
 chrome.runtime.onInstalled.addListener(() => {
-  console.log('[SafeSpace] Extension installed');
+  console.log('[iWitness] Extension installed');
   storageManager.cleanup();
 });
 
 // Initialize on startup
 chrome.runtime.onStartup.addListener(() => {
-  console.log('[SafeSpace] Extension started');
+  console.log('[iWitness] Extension started');
   storageManager.cleanup();
 });
 
@@ -549,5 +549,5 @@ setInterval(() => {
   storageManager.cleanup();
 }, 24 * 60 * 60 * 1000); // Once per day
 
-console.log('[SafeSpace] Background service worker initialized');
+console.log('[iWitness] Background service worker initialized');
 
