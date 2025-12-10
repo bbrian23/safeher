@@ -74,22 +74,25 @@ Respond ONLY with a JSON object in this exact format:
 }`;
   }
 
-  async analyzeContent(text, context = {}) {
+  async analyzeContent(text, context = {}, language = 'en') {
     if (!text || text.trim().length === 0) {
       return {
         riskLevel: RISK_LEVELS.SAFE,
         riskType: null,
         confidence: 0,
         indicators: [],
-        explanation: 'No content to analyze',
+        explanation: language === 'fr' ? 'Aucun contenu à analyser' : 'No content to analyze',
         recommendation: null
       };
     }
 
     const isComment = context.type === 'comment' || context.isComment === true;
     const contentType = isComment ? 'COMMENT' : 'POST';
+    const responseLanguage = language === 'fr' ? 'French (français)' : 'English';
     
     const prompt = `Analyze this ${contentType} for cyberbullying, harassment, GBV, stalking, privacy/doxxing, and safety risks. Use the taxonomy above to spot broader variations (synonyms, implied threats, coercion, stalking language).
+
+**IMPORTANT: You MUST respond entirely in ${responseLanguage}. All text in your JSON response (explanation, recommendation, indicators) must be in ${responseLanguage}. If the user's language is French, respond completely in French. If English, respond in English.**
 
 **Content Text:** "${text}"
 
@@ -145,7 +148,7 @@ Examples of harmful content (but detect ANY similar patterns; expand using the t
 - Any body shaming or appearance insults → HIGH RISK
 - Gender-based put-downs → MEDIUM-HIGH RISK
 
-Provide your analysis in the specified JSON format.`;
+Provide your analysis in the specified JSON format. **Remember: ALL text in your response must be in ${responseLanguage}.**`;
 
     try {
       const response = await apiService.makeRequest(prompt, this.systemPrompt);
@@ -304,6 +307,56 @@ Provide your analysis in the specified JSON format.`;
 
     const symbolThreats = ['🔪', '🪓', '🔫', '⚰️', '😈', '👁️', '🩸', 'rope', 'noose'];
 
+    // French threat keywords
+    const frenchThreats = [
+      'je vais te tuer', 'je vais te faire mal', 'je vais te trouver', 'tu vas mourir',
+      'je vais te détruire', 'tu es fini', 'je vais te briser', 'dernier avertissement',
+      'je viens te chercher', 'tu ne survivras pas', 'tu ne te réveilleras pas',
+      'violer', 'agresser', 'battre', 'étrangler', 'gifler', 'forcer', 'punir physiquement',
+      'tuer', 'tuer u', 'u mort', 'disparaître', 'disparaitre'
+    ];
+    
+    const frenchStalking = [
+      'je sais où tu habites', 'je suis devant ta maison', 'je vais te suivre',
+      'suivre ta localisation', 'suivre ton trajet', 'je te surveille', 'je t\'observe',
+      'gps sur toi', 'géolocalisation', 'localisation en direct', 'suivre'
+    ];
+    
+    const frenchDoxxing = [
+      'révéler ton adresse', 'partager tes photos', 'publier tes infos', 'exposer',
+      'révéler ton numéro', 'publier tes détails', 'partager tes secrets', 'fuite d\'infos',
+      'leak tes infos', 'dox', 'révéler'
+    ];
+    
+    const frenchSextortion = [
+      'paye-moi sinon', 'envoie de l\'argent ou je le publie', 'bitcoin ou je poste',
+      'tes nus', 'tes photos privées', 'vidéos intimes', 'je vais publier tes clips',
+      'images explicites', 'sex tape', 'publier tes photos', 'nudes', 'nudz'
+    ];
+    
+    const frenchMisogyny = [
+      'pute', 'salope', 'connasse', 'garce', 'trainée', 'facile', 'sale',
+      'femme sans valeur', 'femme gâtée', 'sans caractère'
+    ];
+    
+    const frenchControl = [
+      'tu m\'appartiens', 'obéis sinon', 'ne parle à personne', 'bloque tes amis',
+      'coupe les liens avec ta famille', 'supprime tes comptes', 'tu ne peux pas sortir',
+      'j\'ai besoin de ma permission', 'tu me rends compte', 'reste à la maison'
+    ];
+    
+    const frenchCyberbullying = [
+      'laid', 'gros', 'maigre', 'dégoûtant', 'hideux', 'stupide', 'idiot', 'crétin',
+      'imbécile', 'perdant', 'sans valeur', 'tout le monde te déteste', 'visage dégoûtant',
+      'tu ne vaux rien', 'garçon laid', 'fille laide'
+    ];
+    
+    const frenchManipulation = [
+      'envoie-moi des photos sinon', 'fais ça ou je le publie', 'manipulation',
+      'tu imagines', 'tu es dramatique', 'tu as mal compris', 'personne d\'autre ne te veut',
+      'tu as de la chance que je reste', 'personne ne te croira'
+    ];
+
     const cyberbullyingKeywords = [
       'ugly', 'fat', 'skinny', 'disgusting', 'gross', 'hideous',
       'stupid', 'idiot', 'moron', 'dumb', 'fool', 'loser',
@@ -350,8 +403,8 @@ Provide your analysis in the specified JSON format.`;
       return lowerText.includes(p) || compactText.includes(compact) || leetText.includes(compact);
     };
 
-    // Threats / violence
-    for (const keyword of [...immediateThreats, ...weaponsAndViolence, ...indirectThreats]) {
+    // Threats / violence (English + French)
+    for (const keyword of [...immediateThreats, ...weaponsAndViolence, ...indirectThreats, ...frenchThreats]) {
       if (containsAny(keyword)) {
         riskLevel = RISK_LEVELS.HIGH;
         riskType = ALERT_TYPES.THREAT;
@@ -360,8 +413,68 @@ Provide your analysis in the specified JSON format.`;
       }
     }
 
-    // Cyberbullying
-    for (const keyword of cyberbullyingKeywords) {
+    // Stalking (English + French)
+    for (const keyword of [...stalkingAndMonitoring, ...frenchStalking]) {
+      if (containsAny(keyword)) {
+        if (riskLevel === RISK_LEVELS.SAFE) {
+          riskLevel = RISK_LEVELS.HIGH;
+        }
+        riskType = ALERT_TYPES.THREAT;
+        indicators.push(`Stalking detected: "${keyword}"`);
+        suggestBlock = true;
+      }
+    }
+
+    // Doxxing (English + French)
+    for (const keyword of [...doxxingAndLeak, ...frenchDoxxing]) {
+      if (containsAny(keyword)) {
+        if (riskLevel === RISK_LEVELS.SAFE) {
+          riskLevel = RISK_LEVELS.HIGH;
+        }
+        riskType = ALERT_TYPES.PRIVACY;
+        indicators.push(`Doxxing detected: "${keyword}"`);
+        suggestBlock = true;
+      }
+    }
+
+    // Sextortion (English + French)
+    for (const keyword of [...sextortion, ...frenchSextortion]) {
+      if (containsAny(keyword)) {
+        if (riskLevel === RISK_LEVELS.SAFE) {
+          riskLevel = RISK_LEVELS.HIGH;
+        }
+        riskType = ALERT_TYPES.PRIVACY;
+        indicators.push(`Sextortion detected: "${keyword}"`);
+        suggestBlock = true;
+      }
+    }
+
+    // Misogyny (English + French)
+    for (const keyword of [...misogynySlurs, ...frenchMisogyny]) {
+      if (containsAny(keyword)) {
+        if (riskLevel === RISK_LEVELS.SAFE) {
+          riskLevel = RISK_LEVELS.HIGH;
+        }
+        riskType = ALERT_TYPES.GBV;
+        indicators.push(`Misogyny detected: "${keyword}"`);
+        suggestBlock = true;
+      }
+    }
+
+    // Control/Isolation (English + French)
+    for (const keyword of [...controlAndIsolation, ...frenchControl]) {
+      if (containsAny(keyword)) {
+        if (riskLevel === RISK_LEVELS.SAFE) {
+          riskLevel = RISK_LEVELS.MEDIUM;
+        }
+        riskType = ALERT_TYPES.GBV;
+        indicators.push(`Control/isolation detected: "${keyword}"`);
+        suggestBlock = true;
+      }
+    }
+
+    // Cyberbullying (English + French)
+    for (const keyword of [...cyberbullyingKeywords, ...frenchCyberbullying]) {
       if (containsAny(keyword)) {
         if (riskLevel === RISK_LEVELS.SAFE) {
           riskLevel = RISK_LEVELS.HIGH;
@@ -369,6 +482,17 @@ Provide your analysis in the specified JSON format.`;
         }
         indicators.push(`Cyberbullying detected: "${keyword}"`);
         suggestBlock = true;
+      }
+    }
+
+    // Manipulation (English + French)
+    for (const keyword of [...gaslighting, ...frenchManipulation]) {
+      if (containsAny(keyword)) {
+        if (riskLevel === RISK_LEVELS.SAFE) {
+          riskLevel = RISK_LEVELS.MEDIUM;
+        }
+        riskType = ALERT_TYPES.MANIPULATION;
+        indicators.push(`Manipulation detected: "${keyword}"`);
       }
     }
 
@@ -543,12 +667,12 @@ Provide your analysis in the specified JSON format.`;
   }
 
   // Batch analyze multiple content items
-  async analyzeBatch(contentItems) {
+  async analyzeBatch(contentItems, language = 'en') {
     const results = [];
     
     for (const item of contentItems) {
       try {
-        const analysis = await this.analyzeContent(item.text, item.context);
+        const analysis = await this.analyzeContent(item.text, item.context, language);
         results.push({
           ...item,
           analysis

@@ -38,16 +38,16 @@ body {
   background-color: var(--white);
   color: var(--near-black);
   line-height: 1.5;
-  width: 420px;
+  width: 650px;
   margin: 0;
   padding: 0;
   overflow: hidden;
 }
 
-/* Extension Popup Container - fixed width/height for proper browser extension display */
+/* Extension Popup Container - optimized size for better visibility */
 .extension-popup {
-  width: 420px;
-  height: 600px;
+  width: 650px;
+  height: 650px;
   display: flex;
   flex-direction: column;
   background: linear-gradient(135deg, var(--white) 0%, #f0f4ff 100%);
@@ -163,6 +163,8 @@ body {
   border-bottom: 2px solid var(--light-gray);
   padding: 0;
   margin: 0;
+  position: relative;
+  z-index: 100;
 }
 
 .nav-tab {
@@ -176,6 +178,9 @@ body {
   cursor: pointer;
   transition: all 0.3s ease;
   position: relative;
+  pointer-events: auto;
+  z-index: 10;
+  user-select: none;
 }
 
 .nav-tab:hover {

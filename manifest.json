@@ -18,6 +18,12 @@
     "service_worker": "background/background.js",
     "type": "module"
   },
+  "web_accessible_resources": [
+    {
+      "resources": ["config.js", "content/indicators.js"],
+      "matches": ["<all_urls>"]
+    }
+  ],
   "content_scripts": [
     {
       "matches": [

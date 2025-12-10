@@ -188,6 +188,22 @@ async function handleMessage(request, sender, sendResponse) {
         sendResponse({ success: true, message: 'Test alert generated' });
         break;
       
+      case 'closeCurrentTab':
+        // Close the current tab (called from content scripts for high-risk alerts)
+        try {
+          const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+          if (tab && tab.id) {
+            await chrome.tabs.remove(tab.id);
+            sendResponse({ success: true });
+          } else {
+            sendResponse({ success: false, error: 'No active tab found' });
+          }
+        } catch (error) {
+          console.error('[Background] Error closing tab:', error);
+          sendResponse({ success: false, error: error.message });
+        }
+        break;
+      
       default:
         sendResponse({ success: false, error: 'Unknown action' });
     }
@@ -199,9 +215,9 @@ async function handleMessage(request, sender, sendResponse) {
 
 // Handle content analysis requests
 async function handleAnalyzeContent(request, sender, sendResponse) {
-  const { contentItems } = request;
+  const { contentItems, language } = request;
   
-  console.log(`[Background] Received ${contentItems?.length || 0} items for analysis`);
+  console.log(`[Background] Received ${contentItems?.length || 0} items for analysis (language: ${language || 'en'})`);
   
   if (!contentItems || contentItems.length === 0) {
     sendResponse({ success: true, results: [] });
@@ -217,10 +233,11 @@ async function handleAnalyzeContent(request, sender, sendResponse) {
   }
 
   // Check API key (use AI when available; otherwise fall back to keyword-only analysis)
-  const apiKey = await storageManager.getApiKey();
+  // Use apiService.getApiKey() which checks config.js first, then storage
+  const apiKey = await apiService.getApiKey();
   const useAi = Boolean(apiKey);
   if (!useAi) {
-    console.warn('[Background] API key not configured. Falling back to keyword-only analysis.');
+    console.warn('[Background] API key not configured in config.js. Falling back to keyword-only analysis.');
   }
 
   // Filter out blocked accounts
@@ -240,7 +257,7 @@ async function handleAnalyzeContent(request, sender, sendResponse) {
     
     try {
       const batchResults = useAi
-        ? await contentAnalyzer.analyzeBatch(batch)
+        ? await contentAnalyzer.analyzeBatch(batch, language || 'en')
         : await Promise.all(batch.map(async (item) => ({
             ...item,
             analysis: contentAnalyzer.fallbackAnalysis(null, item.text)
@@ -250,17 +267,27 @@ async function handleAnalyzeContent(request, sender, sendResponse) {
       for (const result of batchResults) {
         if (result.analysis && result.analysis.riskLevel !== 'safe') {
           console.log(`[Background] Generating alert for ${result.analysis.riskLevel} risk content`);
+          console.log(`[Background] Analysis details:`, result.analysis);
+          console.log(`[Background] Context:`, result.context);
+          
           const alert = await alertManager.generateAlert(
             result.analysis,
             result.text,
             result.context
           );
           
+          console.log(`[Background] Alert generated and saved:`, alert ? alert.id : 'null');
+          
           // Notify popup if open
           if (alert) {
             try {
               chrome.runtime.sendMessage({ action: "newAlert", alert }).catch(() => {});
-            } catch (e) {}
+              console.log(`[Background] Sent newAlert message to popup`);
+            } catch (e) {
+              console.error(`[Background] Error sending newAlert message:`, e);
+            }
+          } else {
+            console.warn(`[Background] Alert was null, not saved`);
           }
         }
         

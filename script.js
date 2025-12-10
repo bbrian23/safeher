@@ -5,36 +5,86 @@ class SafeSpaceManager {
   constructor() {
     this.currentTab = "dashboard"
     this.settings = null
+    this.pendingStats = null
     this.init()
   }
 
   init() {
+    console.log("[SafeSpace] Initializing SafeSpaceManager...")
+    
+    // Setup tab navigation first - use immediate execution
     this.setupTabNavigation()
     this.setupEventListeners()
     this.setupHoverActions()
-    this.loadData()
     this.setupStorageListener()
+    
+    // Load data after a small delay to ensure DOM is ready
+    setTimeout(() => {
+      console.log("[SafeSpace] Loading data...")
+      this.loadData()
+    }, 100)
   }
 
   // Tab Navigation
   setupTabNavigation() {
-    const navTabs = document.querySelectorAll(".nav-tab")
-    const tabContents = document.querySelectorAll(".tab-content")
+    // Use event delegation on the nav container
+    const navContainer = document.querySelector(".popup-nav")
+    if (!navContainer) {
+      console.error("[SafeSpace] Nav container not found!")
+      return
+    }
 
-    navTabs.forEach((tab) => {
-      tab.addEventListener("click", () => {
-        const tabName = tab.dataset.tab
+    navContainer.addEventListener("click", (e) => {
+      const tab = e.target.closest(".nav-tab")
+      if (!tab) return
+      
+      e.preventDefault()
+      e.stopPropagation()
+      
+      const tabName = tab.getAttribute("data-tab")
+      console.log("[SafeSpace] Tab clicked:", tabName)
+      
+      if (!tabName) {
+        console.warn("[SafeSpace] Tab clicked but no data-tab attribute found")
+        return
+      }
 
-        // Update active tab button
-        navTabs.forEach((t) => t.classList.remove("active"))
-        tab.classList.add("active")
+      // Update active tab button
+      document.querySelectorAll(".nav-tab").forEach((t) => t.classList.remove("active"))
+      tab.classList.add("active")
 
-        // Update active tab content
-        tabContents.forEach((content) => content.classList.remove("active"))
-        document.getElementById(tabName).classList.add("active")
-
-        this.currentTab = tabName
+      // Update active tab content
+      document.querySelectorAll(".tab-content").forEach((content) => {
+        content.classList.remove("active")
       })
+      
+      const targetContent = document.getElementById(tabName)
+      if (targetContent) {
+        targetContent.classList.add("active")
+        console.log("[SafeSpace] Switched to tab:", tabName)
+      } else {
+        console.error("[SafeSpace] Tab content not found for:", tabName)
+        return
+      }
+
+      this.currentTab = tabName
+      
+      // Load data for the specific tab
+      if (tabName === "alerts") {
+        this.loadAlerts()
+      } else if (tabName === "website") {
+        this.loadWebsiteAnalysis()
+      } else if (tabName === "settings") {
+        this.updateSettingsUI()
+        } else if (tabName === "dashboard") {
+          // Reload dashboard data
+          this.loadData()
+          // Update stats if we have pending stats
+          if (this.pendingStats) {
+            this.updateStats(this.pendingStats)
+            this.pendingStats = null
+          }
+        }
     })
   }
 
@@ -47,7 +97,13 @@ class SafeSpaceManager {
     })
 
     // Hide/Report buttons in alerts (will be set up dynamically)
+    // Use event delegation but exclude nav tabs
     document.addEventListener("click", (e) => {
+      // Don't interfere with nav tab clicks
+      if (e.target.closest(".nav-tab") || e.target.closest(".popup-nav")) {
+        return
+      }
+      
       if (e.target.classList.contains("hide-btn") || e.target.closest(".hide-btn")) {
         const btn = e.target.classList.contains("hide-btn") ? e.target : e.target.closest(".hide-btn")
         const alertItem = btn.closest(".alert-item")
@@ -236,22 +292,35 @@ class SafeSpaceManager {
       if (settingsResponse && settingsResponse.success) {
         this.settings = settingsResponse.settings
         
-        // Check API key
-        if (!this.settings.apiKey) {
-          this.updateStatus("⚠️ API key not configured. Go to Settings to add your OpenRouter API key.", "warning")
-        } else if (this.settings.monitoringEnabled === false) {
+        // Check API key (now in config.js)
+        // API key is configured in config.js file
+        if (this.settings.monitoringEnabled === false) {
           this.updateStatus("Monitoring is disabled. Enable it in Settings.", "warning")
         } else {
           this.updateStatus("✓ Extension is active and monitoring", "success")
         }
         
         this.updateSettingsUI()
+      } else {
+        this.updateStatus("✓ Extension is active and monitoring", "success")
       }
 
-      // Load stats
-      const statsResponse = await chrome.runtime.sendMessage({ action: "getStats" })
-      if (statsResponse && statsResponse.success) {
-        this.updateStats(statsResponse.stats)
+      // Load stats - always try to load and display
+      try {
+        const statsResponse = await chrome.runtime.sendMessage({ action: "getStats" })
+        console.log("[SafeSpace] Stats response:", statsResponse)
+        if (statsResponse && statsResponse.success && statsResponse.stats) {
+          console.log("[SafeSpace] Updating stats with:", statsResponse.stats)
+          this.updateStats(statsResponse.stats)
+        } else {
+          console.warn("[SafeSpace] Stats response invalid, using defaults:", statsResponse)
+          // Set default stats
+          this.updateStats({ highRiskPosts: 0, warnings: 0, flaggedAccounts: 0, totalAlerts: 0 })
+        }
+      } catch (error) {
+        console.error("[SafeSpace] Error loading stats:", error)
+        // Set default stats on error - ensure UI shows something
+        this.updateStats({ highRiskPosts: 0, warnings: 0, flaggedAccounts: 0, totalAlerts: 0 })
       }
 
       // Load alerts
@@ -372,18 +441,46 @@ class SafeSpaceManager {
 
   // Update stats in dashboard
   updateStats(stats) {
+    console.log("[SafeSpace] Updating stats:", stats)
+    
+    // Ensure we're in the dashboard tab
+    const dashboardTab = document.getElementById("dashboard")
+    if (!dashboardTab || !dashboardTab.classList.contains("active")) {
+      console.log("[SafeSpace] Dashboard tab not active, stats will update when tab is shown")
+      // Store stats to update later
+      this.pendingStats = stats
+      return
+    }
+    
     const highRiskEl = document.getElementById("stat-high-risk")
     const warningsEl = document.getElementById("stat-warnings")
     const flaggedEl = document.getElementById("stat-flagged")
     
+    console.log("[SafeSpace] Stat elements found:", {
+      highRisk: !!highRiskEl,
+      warnings: !!warningsEl,
+      flagged: !!flaggedEl
+    })
+    
     if (highRiskEl) {
-      highRiskEl.textContent = stats.highRiskPosts || 0
+      highRiskEl.textContent = String(stats.highRiskPosts || 0)
+      console.log("[SafeSpace] Updated high risk:", stats.highRiskPosts || 0)
+    } else {
+      console.error("[SafeSpace] stat-high-risk element not found! Available IDs:", Array.from(document.querySelectorAll("[id^='stat-']")).map(el => el.id))
     }
+    
     if (warningsEl) {
-      warningsEl.textContent = stats.warnings || 0
+      warningsEl.textContent = String(stats.warnings || 0)
+      console.log("[SafeSpace] Updated warnings:", stats.warnings || 0)
+    } else {
+      console.error("[SafeSpace] stat-warnings element not found!")
     }
+    
     if (flaggedEl) {
-      flaggedEl.textContent = stats.flaggedAccounts || 0
+      flaggedEl.textContent = String(stats.flaggedAccounts || 0)
+      console.log("[SafeSpace] Updated flagged:", stats.flaggedAccounts || 0)
+    } else {
+      console.error("[SafeSpace] stat-flagged element not found!")
     }
 
     // Update recent activity
@@ -777,15 +874,9 @@ class SafeSpaceManager {
         <h2 style="margin: 0 0 20px 0; font-size: 20px; font-weight: 700;">Settings</h2>
         <form id="settings-form-modal">
           <div style="margin-bottom: 16px;">
-            <label style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600; color: #374151;">
-              OpenRouter API Key
-            </label>
-            <input type="password" id="api-key-input" placeholder="sk-or-v1-..." 
-              style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 13px;">
-            <div style="font-size: 11px; color: #6b7280; margin-top: 4px;">
-              Get your API key from <a href="https://openrouter.ai" target="_blank" style="color: #2563eb;">openrouter.ai</a>
+            <div style="font-size: 12px; color: #6b7280; padding: 12px; background: #f3f4f6; border-radius: 8px; margin-bottom: 16px;">
+              API key is configured in <code style="background: white; padding: 2px 6px; border-radius: 4px; font-size: 11px;">config.js</code> file
             </div>
-          </div>
           <div style="margin-bottom: 16px;">
             <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #374151;">
               <input type="checkbox" id="monitoring-enabled" style="width: 16px; height: 16px;">
@@ -814,11 +905,9 @@ class SafeSpaceManager {
 
     // Populate form
     if (this.settings) {
-      const apiKeyInput = modal.querySelector("#api-key-input")
       const monitoringCheck = modal.querySelector("#monitoring-enabled")
       const autoHideCheck = modal.querySelector("#auto-hide-high")
 
-      if (apiKeyInput) apiKeyInput.value = this.settings.apiKey || ""
       if (monitoringCheck) monitoringCheck.checked = this.settings.monitoringEnabled !== false
       if (autoHideCheck) autoHideCheck.checked = this.settings.autoHideHighRisk || false
     }
@@ -845,7 +934,6 @@ class SafeSpaceManager {
   }
 
   async saveSettingsFromModal(modal) {
-    const apiKey = modal.querySelector("#api-key-input").value.trim()
     const monitoringEnabled = modal.querySelector("#monitoring-enabled").checked
     const autoHideHighRisk = modal.querySelector("#auto-hide-high").checked
 
@@ -853,7 +941,6 @@ class SafeSpaceManager {
       const response = await chrome.runtime.sendMessage({
         action: "updateSettings",
         settings: {
-          apiKey,
           monitoringEnabled,
           autoHideHighRisk
         }
@@ -870,14 +957,10 @@ class SafeSpaceManager {
   }
 
   async saveSettings() {
-    const apiKeyInput = document.getElementById("api-key-input")
     const monitoringCheck = document.getElementById("monitoring-enabled")
     const autoHideHigh = document.getElementById("auto-hide-high")
     const autoHideMedium = document.getElementById("auto-hide-medium")
 
-    if (!apiKeyInput) return
-
-    const apiKey = apiKeyInput.value.trim()
     const monitoringEnabled = monitoringCheck ? monitoringCheck.checked : true
     const autoHideHighRisk = autoHideHigh ? autoHideHigh.checked : false
     const autoHideMediumRisk = autoHideMedium ? autoHideMedium.checked : false
@@ -886,7 +969,6 @@ class SafeSpaceManager {
       const response = await chrome.runtime.sendMessage({
         action: "updateSettings",
         settings: {
-          apiKey,
           monitoringEnabled,
           autoHideHighRisk,
           autoHideMediumRisk
@@ -947,12 +1029,10 @@ class SafeSpaceManager {
   updateSettingsUI() {
     // Update settings form with current values
     if (this.settings) {
-      const apiKeyInput = document.getElementById("api-key-input")
       const monitoringCheck = document.getElementById("monitoring-enabled")
       const autoHideHigh = document.getElementById("auto-hide-high")
       const autoHideMedium = document.getElementById("auto-hide-medium")
 
-      if (apiKeyInput) apiKeyInput.value = this.settings.apiKey || ""
       if (monitoringCheck) monitoringCheck.checked = this.settings.monitoringEnabled !== false
       if (autoHideHigh) autoHideHigh.checked = this.settings.autoHideHighRisk || false
       if (autoHideMedium) autoHideMedium.checked = this.settings.autoHideMediumRisk || false
@@ -1018,10 +1098,18 @@ class SafeSpaceManager {
     })
 
     // Also listen for messages from background about new alerts
-    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
       if (request.action === "newAlert") {
-        console.log("[SafeSpace] New alert received, reloading...")
-        this.loadData()
+        console.log("[SafeSpace] New alert received:", request.alert)
+        // Refresh alerts list
+        await this.loadAlerts()
+        
+        // Also refresh stats
+        const statsResponse = await chrome.runtime.sendMessage({ action: "getStats" })
+        if (statsResponse && statsResponse.success) {
+          this.updateStats(statsResponse.stats)
+        }
+        return true // Indicate we'll handle response asynchronously
       }
       
       if (request.action === "switchToAlertsTab") {

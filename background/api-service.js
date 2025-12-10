@@ -2,6 +2,7 @@
 
 import { OPENROUTER_API_URL, AI_MODELS } from '../utils/constants.js';
 import storageManager from './storage-manager.js';
+import { getApiKey as getConfigApiKey } from '../config.js';
 
 class ApiService {
   constructor() {
@@ -10,8 +11,14 @@ class ApiService {
     this.processing = false;
   }
 
-  // Get current API key
+  // Get current API key - checks config.js first, then storage
   async getApiKey() {
+    // First check config.js
+    const configKey = getConfigApiKey();
+    if (configKey && configKey.trim() !== '') {
+      return configKey;
+    }
+    // Fallback to storage (for backward compatibility)
     return await storageManager.getApiKey();
   }
 
